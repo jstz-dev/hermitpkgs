@@ -1,7 +1,7 @@
 let
   parentNixpkgs = import (fetchTarball {
-    url = "https://github.com/jstz-dev/nixpkgs/archive/af72bfbe620a98555bf4b11a8e5e498dffebff83.tar.gz";
-    sha256 = "0qmgl8h5kxbga854kkkkh43rqgps9540hrypfijlp7f6qgksg2c2";
+    url = "https://github.com/jstz-dev/nixpkgs/archive/cc6fe05137995c9fae76e7638da7f24280f672e3.tar.gz";
+    sha256 = "0s55rn8v5klby2gg2hxcw3k3ngxxlgxcc43x0b5zfmncnj244siw";
   });
   overlay = import ./overlay;
 in

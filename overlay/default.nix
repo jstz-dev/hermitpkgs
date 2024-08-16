@@ -20,4 +20,11 @@ in {
     nativeBuildInputs = attrs.nativeBuildInputs ++ (with prev; [flex texinfo]);
     buildInputs = attrs.buildInputs ++ (with prev; [ gmp mpfr ]);
   });
+
+  # New Hermit Packages
+  hermitPkgs = 
+    {
+      # kernel = final.callPackage ../pkgs/hermit-kernel.nix {};
+      hello-world = final.callPackage ../pkgs/hermit-hello-world {};
+    };
 }
