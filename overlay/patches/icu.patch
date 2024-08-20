@@ -1,0 +1,122 @@
+diff --git a/icu4c/source/acinclude.m4 b/icu4c/source/acinclude.m4
+index a75ab2e294b..9bc2382f415 100644
+--- a/icu4c/source/acinclude.m4
++++ b/icu4c/source/acinclude.m4
+@@ -85,6 +85,7 @@ powerpc*-apple-darwin*)	icu_cv_host_frag=mh-darwin-ppc ;;
+ *-dec-osf*) icu_cv_host_frag=mh-alpha-osf ;;
+ *-*-nto*)	icu_cv_host_frag=mh-qnx ;;
+ *-ncr-*)	icu_cv_host_frag=mh-mpras ;;
++*-*-hermit*) icu_cv_host_frag=mh-hermit ;;
+ *) 		icu_cv_host_frag=mh-unknown ;;
+ esac
+ 		]
+diff --git a/icu4c/source/config.sub b/icu4c/source/config.sub
+index fb579478695..0303c3d5e0f 100644
+--- a/icu4c/source/config.sub
++++ b/icu4c/source/config.sub
+@@ -1395,7 +1395,7 @@ case $os in
+ 	      | -hpux* | -unos* | -osf* | -luna* | -dgux* | -auroraux* | -solaris* \
+ 	      | -sym* | -kopensolaris* | -plan9* \
+ 	      | -amigaos* | -amigados* | -msdos* | -newsos* | -unicos* | -aof* \
+-	      | -aos* | -aros* | -cloudabi* | -sortix* \
++	      | -aos* | -aros* | -cloudabi* | -hermit* | -sortix* \
+ 	      | -nindy* | -vxsim* | -vxworks* | -ebmon* | -hms* | -mvs* \
+ 	      | -clix* | -riscos* | -uniplus* | -iris* | -rtu* | -xenix* \
+ 	      | -hiux* | -386bsd* | -knetbsd* | -mirbsd* | -netbsd* \
+diff --git a/icu4c/source/config/mh-hermit b/icu4c/source/config/mh-hermit
+new file mode 100644
+index 00000000000..ec95b19ac63
+--- /dev/null
++++ b/icu4c/source/config/mh-hermit
+@@ -0,0 +1,64 @@
++## -*-makefile-*-
++## Copyright (C) 2016 and later: Unicode, Inc. and others.
++## License & terms of use: http://www.unicode.org/copyright.html
++## hermit-specific setup
++## Copyright (c) 2010-2012, International Business Machines Corporation and
++## others. All Rights Reserved.
++##
++
++## Commands to generate dependency files
++GEN_DEPS.c=  $(CC) -E -MM $(DEFS) $(CPPFLAGS)
++GEN_DEPS.cc= $(CXX) -E -MM $(DEFS) $(CPPFLAGS)
++
++## Flags for position independent code
++CFLAGS += -fPIC
++CXXFLAGS += -fPIC
++SHAREDLIBCFLAGS = -fPIC
++SHAREDLIBCXXFLAGS = -fPIC
++SHAREDLIBCPPFLAGS = -DPIC
++
++## Compiler switch to embed a runtime search path
++LD_RPATH=
++LD_RPATH_PRE = -Wl,-rpath,
++
++## Compiler switch to embed a library name
++LD_SONAME = -Wl,-soname -Wl,$(notdir $(MIDDLE_SO_TARGET))
++
++## Shared object suffix
++SO = so
++## Non-shared intermediate object suffix
++STATIC_O = ao
++
++## Compilation rules
++%.$(STATIC_O): $(srcdir)/%.c
++	$(COMPILE.c) $(STATICCPPFLAGS) $(STATICCFLAGS) -o $@ $<
++%.o: $(srcdir)/%.c
++	$(COMPILE.c) $(DYNAMICCPPFLAGS) $(DYNAMICCFLAGS) -o $@ $<
++
++%.$(STATIC_O): $(srcdir)/%.cpp
++	$(COMPILE.cc) $(STATICCPPFLAGS) $(STATICCXXFLAGS) -o $@ $<
++%.o: $(srcdir)/%.cpp
++	$(COMPILE.cc) $(DYNAMICCPPFLAGS) $(DYNAMICCXXFLAGS) -o $@ $<
++
++
++## Dependency rules
++%.d: $(srcdir)/%.c
++	@echo "generating dependency information for $<"
++	@$(SHELL) -ec '$(GEN_DEPS.c) $< \
++		| sed '\''s%\($*\)\.o[ :]*%\1.o $@ : %g'\'' > $@; \
++		[ -s $@ ] || rm -f $@'
++
++%.d: $(srcdir)/%.cpp
++	@echo "generating dependency information for $<"
++	@$(SHELL) -ec '$(GEN_DEPS.cc) $< \
++		| sed '\''s%\($*\)\.o[ :]*%\1.o $@ : %g'\'' > $@; \
++		[ -s $@ ] || rm -f $@'
++
++## Versioned libraries rules
++
++%.$(SO).$(SO_TARGET_VERSION_MAJOR): %.$(SO).$(SO_TARGET_VERSION)
++	$(RM) $@ && ln -s ${<F} $@
++%.$(SO): %.$(SO).$(SO_TARGET_VERSION_MAJOR)
++	$(RM) $@ && ln -s ${*F}.$(SO).$(SO_TARGET_VERSION) $@
++
++## End hermit-specific setup
+diff --git a/icu4c/source/configure b/icu4c/source/configure
+index 5cf2ab425f0..a1887d7efa9 100755
+--- a/icu4c/source/configure
++++ b/icu4c/source/configure
+@@ -5201,6 +5201,7 @@ powerpc*-apple-darwin*)	icu_cv_host_frag=mh-darwin-ppc ;;
+ *-dec-osf*) icu_cv_host_frag=mh-alpha-osf ;;
+ *-*-nto*)	icu_cv_host_frag=mh-qnx ;;
+ *-ncr-*)	icu_cv_host_frag=mh-mpras ;;
++*-*-hermit*) icu_cv_host_frag=mh-hermit ;;
+ *) 		icu_cv_host_frag=mh-unknown ;;
+ esac
+ 
+diff --git a/icu4c/source/io/ufile.cpp b/icu4c/source/io/ufile.cpp
+index 67930fda544..6dff850a2da 100644
+--- a/icu4c/source/io/ufile.cpp
++++ b/icu4c/source/io/ufile.cpp
+@@ -35,6 +35,10 @@
+ #define fileno(__F) _fileno(__F)
+ #endif
+ 
++#if defined(__hermit__) 
++#define fileno(__F) (__F)->_file
++#endif
++
+ #include "locmap.h"
+ #include "unicode/ustdio.h"
+ 

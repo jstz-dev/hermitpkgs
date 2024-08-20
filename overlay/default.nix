@@ -21,6 +21,13 @@ in {
     buildInputs = attrs.buildInputs ++ (with prev; [ gmp mpfr ]);
   });
 
+  icu = whenHost prev.icu (attrs: {
+    dontUpdateAutotoolsGnuConfigScripts = true; 
+    patches = [ ./patches/icu.patch ];
+    patchFlags = [ "-p3" ];
+    hardeningEnable = (attrs.hardeningEnable or []) ++ [ "pic" ];
+  });
+
   # New Hermit Packages
   hermitPkgs = 
     {
