@@ -25,7 +25,30 @@ in {
     dontUpdateAutotoolsGnuConfigScripts = true; 
     patches = [ ./patches/icu.patch ];
     patchFlags = [ "-p3" ];
-    hardeningEnable = (attrs.hardeningEnable or []) ++ [ "pic" ];
+  });
+
+  nspr = whenHost prev.nspr (attrs: {
+    dontUpdateAutotoolsGnuConfigScripts = true;
+    patches = [ ./patches/nspr.patch ];
+    env.NIX_CFLAGS_COMPILE = "-fpermissive";
+  
+    configureFlags = attrs.configureFlags ++ [
+      # NSPR seems to treat host / target differently to Nix for cross 
+      # compilation. We instead set them directly (host = build, target = host)
+      "--host=${final.stdenv.buildPlatform.config}"
+      "--target=${final.stdenv.hostPlatform.config}"
+    ];
+
+    # mkDerivation automatically adds --build/--host to configureFlags when cross compiling
+    # These defaults do not work for NSPR
+    configurePlatforms = [ ];
+    
+    # We simply want a single output build for now 
+    outputs = [ "out" ];
+    outputBin = "out";
+
+    # Post install phase deletes archives (static libs)
+    postInstall = "";
   });
 
   # New Hermit Packages

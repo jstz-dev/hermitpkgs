@@ -1,0 +1,426 @@
+diff --git a/nspr/build/autoconf/config.sub b/nspr/build/autoconf/config.sub
+index 3d9a8dc..ddfe9fc 100755
+--- a/nspr/build/autoconf/config.sub
++++ b/nspr/build/autoconf/config.sub
+@@ -1700,7 +1700,7 @@ case $os in
+ 	     | os9* | macos* | osx* | ios* \
+ 	     | mpw* | magic* | mmixware* | mon960* | lnews* \
+ 	     | amigaos* | amigados* | msdos* | newsos* | unicos* | aof* \
+-	     | aos* | aros* | cloudabi* | sortix* | twizzler* \
++	     | aos* | aros* | cloudabi* | hermit* | sortix* | twizzler* \
+ 	     | nindy* | vxsim* | vxworks* | ebmon* | hms* | mvs* \
+ 	     | clix* | riscos* | uniplus* | iris* | isc* | rtu* | xenix* \
+ 	     | mirbsd* | netbsd* | dicos* | openedition* | ose* \
+diff --git a/nspr/configure b/nspr/configure
+index 6343ec7..7dee924 100755
+--- a/nspr/configure
++++ b/nspr/configure
+@@ -756,7 +756,6 @@ infodir
+ docdir
+ oldincludedir
+ includedir
+-runstatedir
+ localstatedir
+ sharedstatedir
+ sysconfdir
+@@ -868,7 +867,6 @@ datadir='${datarootdir}'
+ sysconfdir='${prefix}/etc'
+ sharedstatedir='${prefix}/com'
+ localstatedir='${prefix}/var'
+-runstatedir='${localstatedir}/run'
+ includedir='${prefix}/include'
+ oldincludedir='/usr/include'
+ docdir='${datarootdir}/doc/${PACKAGE}'
+@@ -1121,15 +1119,6 @@ do
+   | -silent | --silent | --silen | --sile | --sil)
+     silent=yes ;;
+ 
+-  -runstatedir | --runstatedir | --runstatedi | --runstated \
+-  | --runstate | --runstat | --runsta | --runst | --runs \
+-  | --run | --ru | --r)
+-    ac_prev=runstatedir ;;
+-  -runstatedir=* | --runstatedir=* | --runstatedi=* | --runstated=* \
+-  | --runstate=* | --runstat=* | --runsta=* | --runst=* | --runs=* \
+-  | --run=* | --ru=* | --r=*)
+-    runstatedir=$ac_optarg ;;
+-
+   -sbindir | --sbindir | --sbindi | --sbind | --sbin | --sbi | --sb)
+     ac_prev=sbindir ;;
+   -sbindir=* | --sbindir=* | --sbindi=* | --sbind=* | --sbin=* \
+@@ -1267,7 +1256,7 @@ fi
+ for ac_var in	exec_prefix prefix bindir sbindir libexecdir datarootdir \
+ 		datadir sysconfdir sharedstatedir localstatedir includedir \
+ 		oldincludedir docdir infodir htmldir dvidir pdfdir psdir \
+-		libdir localedir mandir runstatedir
++		libdir localedir mandir
+ do
+   eval ac_val=\$$ac_var
+   # Remove trailing slashes.
+@@ -1420,7 +1409,6 @@ Fine tuning of the installation directories:
+   --sysconfdir=DIR        read-only single-machine data [PREFIX/etc]
+   --sharedstatedir=DIR    modifiable architecture-independent data [PREFIX/com]
+   --localstatedir=DIR     modifiable single-machine data [PREFIX/var]
+-  --runstatedir=DIR       modifiable per-process data [LOCALSTATEDIR/run]
+   --libdir=DIR            object code libraries [EPREFIX/lib]
+   --includedir=DIR        C header files [PREFIX/include]
+   --oldincludedir=DIR     C header files for non-gcc [/usr/include]
+@@ -2346,7 +2334,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
+ 
+ 
+ ac_aux_dir=
+-for ac_dir in ${srcdir}/build/autoconf "$srcdir"/${srcdir}/build/autoconf; do
++for ac_dir in build/autoconf "$srcdir"/build/autoconf; do
+   if test -f "$ac_dir/install-sh"; then
+     ac_aux_dir=$ac_dir
+     ac_install_sh="$ac_aux_dir/install-sh -c"
+@@ -2362,7 +2350,7 @@ for ac_dir in ${srcdir}/build/autoconf "$srcdir"/${srcdir}/build/autoconf; do
+   fi
+ done
+ if test -z "$ac_aux_dir"; then
+-  as_fn_error $? "cannot find install-sh, install.sh, or shtool in ${srcdir}/build/autoconf \"$srcdir\"/${srcdir}/build/autoconf" "$LINENO" 5
++  as_fn_error $? "cannot find install-sh, install.sh, or shtool in build/autoconf \"$srcdir\"/build/autoconf" "$LINENO" 5
+ fi
+ 
+ # These three variables are undocumented and unsupported,
+@@ -6764,6 +6752,18 @@ tools are selected during the Xcode/Developer Tools installation." "$LINENO" 5
+     fi
+     ;;
+ 
++*-hermit*)
++    $as_echo "#define XP_UNIX 1" >>confdefs.h
++
++    $as_echo "#define _GNU_SOURCE 1" >>confdefs.h
++
++    $as_echo "#define HERMIT 1" >>confdefs.h
++
++    USE_PTHREADS=1
++    MDCPUCFG_H=_hermit.cfg
++    MKSHLIB=
++    ;;
++
+ *-linux*|*-gnu*|*-k*bsd*-gnu|*-android*|*-linuxandroid*)
+     if test -z "$USE_NSPR_THREADS"; then
+         USE_PTHREADS=1
+@@ -7694,6 +7694,9 @@ case "$target_os" in
+ darwin*)
+     _HAVE_PTHREADS=1
+     ;;
++hermit*)
++    _HAVE_PTHREADS=1
++    ;;
+ *)
+     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for pthread_create in -lpthreads" >&5
+ $as_echo_n "checking for pthread_create in -lpthreads... " >&6; }
+diff --git a/nspr/configure.in b/nspr/configure.in
+index 7d44466..208e765 100644
+--- a/nspr/configure.in
++++ b/nspr/configure.in
+@@ -1637,6 +1637,15 @@ tools are selected during the Xcode/Developer Tools installation.])
+     fi
+     ;;
+ 
++*-hermit*)
++    AC_DEFINE(XP_UNIX)
++    AC_DEFINE(_GNU_SOURCE)
++    AC_DEFINE(HERMIT)
++    USE_PTHREADS=1
++    MDCPUCFG_H=_hermit.cfg
++    MKSHLIB=
++    ;;
++
+ *-linux*|*-gnu*|*-k*bsd*-gnu|*-android*|*-linuxandroid*)
+     if test -z "$USE_NSPR_THREADS"; then
+         USE_PTHREADS=1
+@@ -2377,6 +2386,9 @@ case "$target_os" in
+ darwin*)
+     _HAVE_PTHREADS=1
+     ;;
++hermit*)
++    _HAVE_PTHREADS=1
++    ;;
+ *)
+     AC_CHECK_LIB(pthreads, pthread_create,
+         _HAVE_PTHREADS=1 _PTHREAD_LDFLAGS="-lpthreads",
+diff --git a/nspr/pr/include/md/_hermit.cfg b/nspr/pr/include/md/_hermit.cfg
+new file mode 100644
+index 0000000..de0f581
+--- /dev/null
++++ b/nspr/pr/include/md/_hermit.cfg
+@@ -0,0 +1,58 @@
++/* -*- Mode: C++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
++/* This Source Code Form is subject to the terms of the Mozilla Public
++ * License, v. 2.0. If a copy of the MPL was not distributed with this
++ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
++
++#ifndef nspr_cpucfg___
++#define nspr_cpucfg___
++
++#ifndef XP_UNIX
++#define XP_UNIX
++#endif
++
++#ifndef HERMIT
++#define HERMIT
++#endif
++
++/* AUTOMATICALLY GENERATED for riscv64 - DO NOT EDIT */
++
++#define IS_LITTLE_ENDIAN 1
++#undef  IS_BIG_ENDIAN
++
++#define PR_BYTES_PER_BYTE   1
++#define PR_BYTES_PER_SHORT  2
++#define PR_BYTES_PER_INT    4
++#define PR_BYTES_PER_INT64  8
++#define PR_BYTES_PER_LONG   8
++#define PR_BYTES_PER_FLOAT  4
++#define PR_BYTES_PER_DOUBLE 8
++
++#define PR_BITS_PER_BYTE    8
++#define PR_BITS_PER_SHORT   16
++#define PR_BITS_PER_INT     32
++#define PR_BITS_PER_INT64   64
++#define PR_BITS_PER_LONG    64
++#define PR_BITS_PER_FLOAT   32
++#define PR_BITS_PER_DOUBLE  64
++
++#define PR_BITS_PER_BYTE_LOG2   3
++#define PR_BITS_PER_SHORT_LOG2  4
++#define PR_BITS_PER_INT_LOG2    5
++#define PR_BITS_PER_INT64_LOG2  6
++#define PR_BITS_PER_LONG_LOG2   6
++#define PR_BITS_PER_FLOAT_LOG2  5
++#define PR_BITS_PER_DOUBLE_LOG2 6
++
++#define PR_ALIGN_OF_SHORT   2
++#define PR_ALIGN_OF_INT     4
++#define PR_ALIGN_OF_LONG    8
++#define PR_ALIGN_OF_INT64   8
++#define PR_ALIGN_OF_FLOAT   4
++#define PR_ALIGN_OF_DOUBLE  8
++#define PR_ALIGN_OF_POINTER 8
++
++#ifndef HAVE_LONG_LONG
++#define HAVE_LONG_LONG
++#endif
++
++#endif /* nspr_cpucfg___ */
+diff --git a/nspr/pr/include/md/_hermit.h b/nspr/pr/include/md/_hermit.h
+new file mode 100644
+index 0000000..e4bb44e
+--- /dev/null
++++ b/nspr/pr/include/md/_hermit.h
+@@ -0,0 +1,41 @@
++/* -*- Mode: C++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
++/* This Source Code Form is subject to the terms of the Mozilla Public
++ * License, v. 2.0. If a copy of the MPL was not distributed with this
++ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
++
++#ifndef nspr_hermit_defs_h___
++#define nspr_hermit_defs_h___
++
++/*
++** Internal configuration macros
++*/
++#define PR_LINKER_ARCH      "hermit"
++#define _PR_SI_SYSNAME      "HERMIT"
++#if defined(__x86_64__)
++#define _PR_SI_ARCHITECTURE "x86-64"
++#elif defined(__i386__)
++#define _PR_SI_ARCHITECTURE "x86"
++#elif defined(__aarch64__)
++#define _PR_SI_ARCHITECTURE "aarch64"
++#elif defined(__riscv) && (__riscv_xlen == 32)
++#define _PR_SI_ARCHITECTURE "riscv32"
++#elif defined(__riscv) && (__riscv_xlen == 64)
++#define _PR_SI_ARCHITECTURE "riscv64"
++#else
++#error "Unknown CPU architecture"
++#endif
++
++#define PR_DLL_SUFFIX       ".so"
++
++#define _PR_NO_LARGE_FILES
++#define HAVE_SOCKLEN_T
++#define _PR_STAT_HAS_ST_ATIM
++#define _PR_POLL_AVAILABLE
++
++// To pick up fd_set 
++#include <sys/select.h>
++#include <sys/poll.h>
++
++#define SA_RESTART 0
++
++#endif /* nspr_hermit_defs_h___ */
+diff --git a/nspr/pr/include/md/_pth.h b/nspr/pr/include/md/_pth.h
+index 37d26e7..ed6cd04 100644
+--- a/nspr/pr/include/md/_pth.h
++++ b/nspr/pr/include/md/_pth.h
+@@ -89,10 +89,14 @@
+     || defined(HPUX) || defined(FREEBSD) \
+     || defined(NETBSD) || defined(OPENBSD) || defined(BSDI) \
+     || defined(NTO) || defined(DARWIN) \
+-    || defined(UNIXWARE) || defined(RISCOS)
++    || defined(UNIXWARE) || defined(RISCOS) 
+ #define _PT_PTHREAD_INVALIDATE_THR_HANDLE(t)  (t) = 0
+ #define _PT_PTHREAD_THR_HANDLE_IS_INVALID(t)  (t) == 0
+ #define _PT_PTHREAD_COPY_THR_HANDLE(st, dt)   (dt) = (st)
++#elif defined(HERMIT)
++#define _PT_PTHREAD_INVALIDATE_THR_HANDLE(t)  (t.p) = 0
++#define _PT_PTHREAD_THR_HANDLE_IS_INVALID(t)  (t.p) == 0
++#define _PT_PTHREAD_COPY_THR_HANDLE(st, dt)   (dt) = (st)
+ #else
+ #error "pthreads is not supported for this architecture"
+ #endif
+@@ -161,6 +165,9 @@
+     || defined(RISCOS) /* XXX */
+ #define PT_PRIO_MIN            0
+ #define PT_PRIO_MAX            126
++#elif defined(HERMIT)
++#define PT_PRIO_MIN            1
++#define PT_PRIO_MAX            31
+ #else
+ #error "pthreads is not supported for this architecture"
+ #endif
+@@ -177,7 +184,7 @@ extern int (*_PT_aix_yield_fcn)();
+     || defined(LINUX) || defined(__GNU__) || defined(__GLIBC__) \
+     || defined(FREEBSD) || defined(NETBSD) || defined(OPENBSD) \
+     || defined(BSDI) || defined(NTO) || defined(DARWIN) \
+-    || defined(UNIXWARE) || defined(RISCOS)
++    || defined(UNIXWARE) || defined(RISCOS) || defined(HERMIT)
+ #define _PT_PTHREAD_YIELD()             sched_yield()
+ #else
+ #error "Need to define _PT_PTHREAD_YIELD for this platform"
+diff --git a/nspr/pr/include/md/_unixos.h b/nspr/pr/include/md/_unixos.h
+index 7d444cd..852bb9b 100644
+--- a/nspr/pr/include/md/_unixos.h
++++ b/nspr/pr/include/md/_unixos.h
+@@ -46,7 +46,7 @@
+  */
+ #include <sys/time.h>
+ #include <sys/types.h>
+-#if defined(AIX)
++#if defined(AIX) || defined(HERMIT)
+ #include <sys/select.h>
+ #endif
+ 
+diff --git a/nspr/pr/include/md/prosdep.h b/nspr/pr/include/md/prosdep.h
+index 42eba3d..1e54574 100644
+--- a/nspr/pr/include/md/prosdep.h
++++ b/nspr/pr/include/md/prosdep.h
+@@ -73,6 +73,9 @@ PR_BEGIN_EXTERN_C
+ #elif defined(RISCOS)
+ #include "md/_riscos.h"
+ 
++#elif defined(HERMIT)
++#include "md/_hermit.h"
++
+ #else
+ #error unknown Unix flavor
+ 
+diff --git a/nspr/pr/src/io/prlog.c b/nspr/pr/src/io/prlog.c
+index 52bd6ab..1f08ab2 100644
+--- a/nspr/pr/src/io/prlog.c
++++ b/nspr/pr/src/io/prlog.c
+@@ -466,11 +466,11 @@ PR_IMPLEMENT(void) PR_LogPrint(const char *fmt, ...)
+     }
+ 
+     me = PR_GetCurrentThread();
+-    nb_tid += PR_snprintf(line+nb_tid, sizeof(line)-nb_tid-1, "%ld[%p]: ",
++    nb_tid += PR_snprintf(line+nb_tid, sizeof(line)-nb_tid-1, "%d[%p]: ",
+ #if defined(_PR_BTHREADS)
+                           me, me);
+ #else
+-                          me ? me->id : 0L, me);
++                            me->id, me);
+ #endif
+ 
+     va_start(ap, fmt);
+diff --git a/nspr/pr/src/malloc/prmem.c b/nspr/pr/src/malloc/prmem.c
+index 08a700f..5f828c8 100644
+--- a/nspr/pr/src/malloc/prmem.c
++++ b/nspr/pr/src/malloc/prmem.c
+@@ -221,7 +221,11 @@ pr_ZoneMalloc(PRUint32 size)
+     }
+     if (zone < MEM_ZONES) {
+         pthread_t me = pthread_self();
++        #ifdef HERMIT 
++        unsigned int pool = (PRUptrdiff)me.p % THREAD_POOLS;
++        #else 
+         unsigned int pool = (PRUptrdiff)me % THREAD_POOLS;
++        #endif
+         PRUint32     wasLocked;
+         mz = &zones[zone][pool];
+         wasLocked = mz->locked;
+diff --git a/nspr/pr/src/md/unix/uxrng.c b/nspr/pr/src/md/unix/uxrng.c
+index 4798590..5e61922 100644
+--- a/nspr/pr/src/md/unix/uxrng.c
++++ b/nspr/pr/src/md/unix/uxrng.c
+@@ -117,6 +117,11 @@ GetHighResClock(void *buf, size_t maxbytes)
+     ticks=times(&buffer);
+     return _pr_CopyLowBits(buf, maxbytes, &ticks, sizeof(ticks));
+ }
++#elif defined(HERMIT)
++static size_t GetHighResClock(void *buf, size_t maxbytes)
++{
++    return 0;
++}
+ #else
+ #error! Platform undefined
+ #endif /* defined(SOLARIS) */
+diff --git a/nspr/pr/src/pthreads/ptio.c b/nspr/pr/src/pthreads/ptio.c
+index a2bc3e7..d6104cd 100644
+--- a/nspr/pr/src/pthreads/ptio.c
++++ b/nspr/pr/src/pthreads/ptio.c
+@@ -192,7 +192,7 @@ static PRBool _pr_ipv6_v6only_on_by_default;
+     || defined(LINUX) || defined(__GNU__) || defined(__GLIBC__) \
+     || defined(FREEBSD) || defined(NETBSD) || defined(OPENBSD) \
+     || defined(BSDI) || defined(NTO) || defined(DARWIN) \
+-    || defined(UNIXWARE) || defined(RISCOS)
++    || defined(UNIXWARE) || defined(RISCOS) || defined(HERMIT)
+ #define _PRSelectFdSetArg_t fd_set *
+ #else
+ #error "Cannot determine architecture"
+@@ -3524,7 +3524,7 @@ static PRIOMethods _pr_socketpollfd_methods = {
+     || defined(LINUX) || defined(__GNU__) || defined(__GLIBC__) \
+     || defined(AIX) || defined(FREEBSD) || defined(NETBSD) \
+     || defined(OPENBSD) || defined(BSDI) || defined(NTO) \
+-    || defined(DARWIN) || defined(UNIXWARE) || defined(RISCOS)
++    || defined(DARWIN) || defined(UNIXWARE) || defined(RISCOS) || defined(HERMIT)
+ #define _PR_FCNTL_FLAGS O_NONBLOCK
+ #else
+ #error "Can't determine architecture"
+@@ -5055,7 +5055,7 @@ PR_IMPLEMENT(PRStatus) PR_UnlockFile(PRFileDesc *fd)
+ 
+ PR_IMPLEMENT(PRInt32) PR_GetSysfdTableMax(void)
+ {
+-#if defined(AIX)
++#if defined(AIX) || defined(HERMIT)
+     return sysconf(_SC_OPEN_MAX);
+ #else
+     struct rlimit rlim;
+@@ -5070,7 +5070,7 @@ PR_IMPLEMENT(PRInt32) PR_GetSysfdTableMax(void)
+ 
+ PR_IMPLEMENT(PRInt32) PR_SetSysfdTableSize(PRIntn table_size)
+ {
+-#if defined(AIX)
++#if defined(AIX) || defined(HERMIT)
+     return -1;
+ #else
+     struct rlimit rlim;
+diff --git a/nspr/pr/src/pthreads/ptthread.c b/nspr/pr/src/pthreads/ptthread.c
+index 92c9c78..a7c1ae9 100644
+--- a/nspr/pr/src/pthreads/ptthread.c
++++ b/nspr/pr/src/pthreads/ptthread.c
+@@ -1185,7 +1185,11 @@ PR_IMPLEMENT(void) PR_ProcessExit(PRIntn status)
+ 
+ PR_IMPLEMENT(PRUint32) PR_GetThreadID(PRThread *thred)
+ {
++#if defined(HERMIT)
++    return (PRUint32)(thred->id.p);
++#else
+     return (PRUint32)thred->id;  /* and I don't know what they will do with it */
++#endif
+ }
+ 
+ /*
